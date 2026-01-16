@@ -1,3 +1,10 @@
+/*
+Name: Peleg Sacher
+ID: 333135440
+Assignment: ex6
+*/
+
+
 #include <stdlib.h>
 #include "bst.h"
 

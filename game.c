@@ -1,3 +1,9 @@
+/*
+Name: Peleg Sacher
+ID: 333135440
+Assignment: ex6
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,30 +15,51 @@
 
 #define FIRST_ARG_BIGGER 1
 #define SECOND_ARG_BIGGER -1
-#define EQUEL 0
+#define equal 0
 
+#define QUITING_INDICATOR -1
+
+
+/* printing functions */
 static void displayMap(GameState* g);
 static void displayLegend(GameState* g);
-static Room* findRoom(Room* room, int ID);
-static Room* findRoomByCords(Room* room, int x, int y);
-static void freeRoom(Room *room);
-static Item* addItem();
-static Monster* addMonster();
-static int getNewRoomID(GameState *g);
-static void linkNewRoom(GameState* g, Room* newRoom);
 static void printRoom(GameState* g, Room* room);
-static void moveAction(GameState* g, Room* room);
-static char getMonsterTypeName(int type);
-static char getItemTypeName(int type);
+
+/* freeing functions */
+static void freeRoom(Room *room);
 static void freePlayer(Player* player);
 
+/* object creators*/
+static Item* addItem();
+static Monster* addMonster();
 
-typedef enum {Up, Down, Left, Right} Directions;
-typedef enum {None, Move, Fight, Pickup, Bag, Defeated, Quit} Moves;
-typedef enum {None, Preorder, Inorder, PostOrder} BTSPrintOrder;
+
+/* logic helpers */
+static char getMonsterTypeName(int type);
+static char getItemTypeName(int type);
+static void linkNewRoom(GameState* g, Room* newRoom);
+static Room* findRoom(Room* room, int ID);
+static Room* findRoomByCords(Room* room, int x, int y);
+static int getNewRoomID(GameState *g);
+static int hasPlayerWon(GameState* g);
+static void playRoom(GameState* g, Room* room);
 
 
-/* Map display functions */
+/* player action functions */
+static void moveAction(GameState* g, Room* room);
+static void fightAction(GameState* g, Room* room);
+static void pickupAction(GameState* g, Room* room);
+static void defeatedAction(GameState* g, Room* room);
+static void bagAction(GameState* g, Room* room);
+static void quitAction(GameState* g, Room* room);
+
+
+
+typedef enum {UP, DOWN, LEFT, RIGHT} Directions;
+typedef enum {NONTHING, MOVE, FIGHT, PICKUP, BAG, DEFEATED, QUIT} Moves;
+typedef enum {NOTHING, PREORDER, INORDER, POSTORDER} BTSPrintOrder;
+
+
 static void displayMap(GameState* g) {
     if (!g->rooms) return;
     
@@ -76,26 +103,30 @@ static void displayLegend(GameState* g){
     if (!g->rooms) return;
 
     printf("=== ROOM LEGEND ===\n");
-
-
-    for (Room* r = g->rooms; r; r = r->next){
-        printf("ID %d: ", r -> id);
-
-        if(r -> monster)
-            printf("[M:V] ");
-        else
-            printf("[M:X] ");
-
-
-        if(r -> item)
-            printf("[I:V]");
-        else
-            printf("[I:X]");
-    }
+    LegendRecursion(g -> rooms);
 }
 
 
-/* room helper functions */
+static void LegendRecursion(Room* r){
+    if (!r -> next) return;
+
+    LegendRecursion(r -> next);
+
+    printf("ID %d: ", r -> id);
+
+    if(r -> monster)
+        printf("[M:V] ");
+    else
+        printf("[M:X] ");
+
+
+    if(r -> item)
+        printf("[I:V]");
+    else
+        printf("[I:X]");
+}
+
+
 static Room* findRoom(Room* room, int ID){
     if (room -> id == ID)
         return room;
@@ -135,6 +166,7 @@ static Item* addItem(){
     newItem -> name = getString("Item name: ");
     newItem -> type = getInt("Type (0=Armor, 1=Sword): ");
     newItem -> value = getInt("Value: ");
+    return newItem;
 }
 
 
@@ -148,6 +180,7 @@ static Monster* addMonster(){
     newMonster -> maxHp = getInt("HP: ");
     newMonster -> attack = getInt("Attack: ");
     newMonster -> hp = newMonster -> maxHp;
+    return newMonster;
 }
 
 
@@ -176,7 +209,7 @@ static void playRoom(GameState* g, Room* room){
     Monster* monster;
     Item* item;
     Player* player = g -> player;
-    int choise;
+    int choice;
 
     if(room == NULL)
         return;
@@ -192,35 +225,35 @@ static void playRoom(GameState* g, Room* room){
     /* all the printing stuff*/
     printRoom(g, room);
 
-    choise = getint("1.Move 2.Fight 3.Pickup 4.Bag 5.Defeated 6.Quit\n");
-    switch (choise){
-    case Move:
-        MoveAction(g, room);
+    choice = getInt("1.Move 2.Fight 3.Pickup 4.Bag 5.Defeated 6.Quit\n");
+    switch (choice){
+    case MOVE:
+        moveAction(g, room);
         return;
         break;
 
-    case Fight:
+    case FIGHT:
         fightAction(g, room);
         return;
         break;
 
-    case Pickup:
+    case PICKUP:
         pickupAction(g, room);
         return;
         break;
 
-    case Bag:
+    case BAG:
         bagAction(g, room);
         return;
         break;
 
-    case Defeated:
+    case DEFEATED:
         defeatedAction(g, room);
         return;
         break;
 
-    case Quit:
-        quitAction(g, room);
+    case QUIT:
+        quitAction(g);
         return;
         break;
     
@@ -246,8 +279,8 @@ static void printRoom(GameState* g, Room* room){
     if ((monster) && (monster -> hp))
         printf("Monster: %s (HP:%d)\n", monster -> name, monster ->hp);
     if(item)
-        printf("Item: $s\n", item -> name);
-    printf("HP: $d/$d\n", player -> hp, player -> maxHp);
+        printf("Item: %s\n", item -> name);
+    printf("HP: %d/%d\n", player -> hp, player -> maxHp);
 
 }
 
@@ -269,22 +302,22 @@ static void moveAction(GameState* g, Room* room){
     direction = getInt("Direction (0=Up,1=Down,2=Left,3=Right): ");
     /* gets the new room cordinates */
     switch (direction){
-        case Up:
+        case UP:
             newX = room -> x;
             newY = room -> y - 1;
             break;
 
-        case Down:
+        case DOWN:
             newX = room -> x;
             newY = room -> y + 1;
             break;
 
-        case Left:
+        case LEFT:
             newX = room -> x - 1;
             newY = room -> y;
             break;
 
-        case Right:
+        case RIGHT:
             newX = room -> x + 1;
             newY = room -> y;
             break;
@@ -345,12 +378,6 @@ static void fightAction(GameState* g, Room* room){
         room -> monster = NULL;
         return;
     }
-    else{
-        /* monster has won */
-        printf("--- YOU DIED ---\n");
-        freeGame(g);
-        return;
-    }
 }
 
 
@@ -384,26 +411,26 @@ static void pickupAction(GameState* g, Room* room){
 
 static void bagAction(GameState* g, Room* room){
     BST* tree = g -> player -> bag;
-    int choise;
+    int choice;
 
     printf("=== INVENTORY ===\n");
     if (isEmpty(tree -> root)){
         printf("        None        \n");
         return;
     }
-    choise = getInt("1.Preorder 2.Inorder 3.Postorder\n");
+    choice = getInt("1.Preorder 2.Inorder 3.Postorder\n");
 
     /* printing the bag accurding to the chiose*/
-    switch (choise){
-    case Preorder:
+    switch (choice){
+    case PREORDER:
         bstPreorder(tree -> root, tree -> print);
         break;
 
-    case Inorder:
+    case INORDER:
         bstInorder(tree -> root, tree -> print);
         break;
 
-    case PostOrder:
+    case POSTORDER:
         bstPostorder(tree -> root, tree -> print);
         break;
 
@@ -414,25 +441,25 @@ static void bagAction(GameState* g, Room* room){
 
 static void defeatedAction(GameState* g, Room* room){
     BST* tree = g -> player -> defeatedMonsters;
-    int choise;
+    int choice;
     printf("=== DEFEATED MONSTERS ===\n");
     if (isEmpty(tree -> root)){
         printf("        None        \n");
         return;
     }
-    choise = getInt("1.Preorder 2.Inorder 3.Postorder\n");
+    choice = getInt("1.Preorder 2.Inorder 3.Postorder\n");
 
     /* printing the defeated monsters accurding to the chiose*/
-    switch (choise){
-    case Preorder:
+    switch (choice){
+    case PREORDER:
         bstPreorder(tree -> root, tree -> print);
         break;
 
-    case Inorder:
+    case INORDER:
         bstInorder(tree -> root, tree -> print);
         break;
 
-    case PostOrder:
+    case POSTORDER:
         bstPostorder(tree -> root, tree -> print);
         break;
 
@@ -441,35 +468,38 @@ static void defeatedAction(GameState* g, Room* room){
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-static void quitAction(GameState* g, Room* room){
-    
+static void quitAction(GameState* g){
+    g -> configMaxHp = QUITING_INDICATOR;
 }
 
 
+static int hasPlayerWon(GameState* g){
+    if(!(g -> player -> hp))
+        return FALSE;
+
+    for (Room* r = g -> rooms; r ; r = r-> next){
+        if((r -> monster) || !(r -> visited))
+            return FALSE;
+    }
+    return TRUE;
+}
 
 
+static void freePlayer(Player* player){
 
+    /* freeing the bag */
+    if(player -> bag){
+        bstFree(player -> bag -> root, player -> bag -> freeData);
+        free(player -> bag);
+    }
+    /* freeing the defeated monster */
+    if(player -> defeatedMonsters){
+        bstFree(player -> defeatedMonsters -> root, player -> defeatedMonsters -> freeData);
+        free(player -> defeatedMonsters);
+    }
 
-
-
-
-
-
-
-
+    free(player);
+}
 
 
 static char getMonsterTypeName(int type){
@@ -522,7 +552,7 @@ void addRoom(GameState* g){
     /* allocating space */
     newRoom = calloc(1, sizeof(Room));
     if(newRoom == NULL){
-        printf("we have encountered an error when trying to elocate memory for the new room\n");
+        printf("we have encountered an error when trying to allocate memory for the new room\n");
         exit(1);
     }
 
@@ -546,22 +576,22 @@ void addRoom(GameState* g){
 
         /* calculates the cordinates */
         switch (direction){
-            case Up:
+            case UP:
                 newX = adjRoom -> x;
                 newY = adjRoom -> y - 1;
                 break;
 
-            case Down:
+            case DOWN:
                 newX = adjRoom -> x;
                 newY = adjRoom -> y + 1;
                 break;
 
-            case Left:
+            case LEFT:
                 newX = adjRoom -> x - 1;
                 newY = adjRoom -> y;
                 break;
 
-            case Right:
+            case RIGHT:
                 newX = adjRoom -> x + 1;
                 newY = adjRoom -> y;
                 break;
@@ -604,7 +634,7 @@ void initPlayer(GameState* g){
 
     if(g -> rooms == NULL){
         printf("Create rooms first\n");
-        return NULL;
+        return;
     }
 
     /* creates and reset player */
@@ -619,6 +649,7 @@ void initPlayer(GameState* g){
     player -> baseAttack = g -> configBaseAttack;
     player -> bag = createBST(compareItems, printItem, freeItem);
     player -> defeatedMonsters = createBST(compareMonsters, printMonster, freeMonster);
+    player -> currentRoom = g -> rooms;
 }
 
 
@@ -658,7 +689,7 @@ int compareMonsters(void* a, void* b){
         still gonna leave it here
         even though it said we can assume there will be no identical monsters
     */
-    return EQUEL;
+    return equal;
 }
 
 
@@ -684,7 +715,7 @@ int compareItems(void* a, void* b){
     if(itemA -> type < itemB -> type)
         return SECOND_ARG_BIGGER;
 
-    return EQUEL;
+    return equal;
 }
 
 
@@ -695,23 +726,6 @@ void freeItem(void *data){
 
     free(item -> name);
     free(item);
-}
-
-
-static void freePlayer(Player* player){
-
-    /* freeing the bag */
-    if(player -> bag){
-        bstFree(player -> bag -> root, player -> bag -> freeData);
-        free(player -> bag);
-    }
-    /* freeing the defeated monster */
-    if(player -> defeatedMonsters){
-        bstFree(player -> defeatedMonsters -> root, player -> defeatedMonsters -> freeData);
-        free(player -> defeatedMonsters);
-    }
-
-    free(player);
 }
 
 
@@ -726,11 +740,32 @@ static void freePlayer(Player* player){
 
 
 void playGame(GameState* g){
-    if(g -> player == NULL){
+    Player* player = g -> player;
+    if(player == NULL){
         printf("Init player first\n");
         return;
     }
 
+    while (!(g -> configMaxHp == QUITING_INDICATOR) || ((!hasPlayerWon(g)) && (player -> hp))){
+        playRoom(g, player -> currentRoom);
+    }
+
+    if(g -> configMaxHp == QUITING_INDICATOR){
+        g -> configMaxHp = g -> player -> maxHp;
+        return;
+    }
+
+    if(hasPlayerWon(g)){
+        printf("***************************************\n");
+        printf("             VICTORY!                  \nAll rooms explored. All monsters defeated.\n");
+        printf("***************************************\n");
+        freeGame(g);
+        exit(0);
+    }
+    else{
+        printf("--- YOU DIED ---\n");
+        exit(0);
+    }
 }
 
 
@@ -748,7 +783,7 @@ void printMonster(void* data){
 void printItem(void* data){
     Item* item = (Item*)data;
 
-    printf("        [type] $s - Value: %d",
+    printf("        [type] %s - Value: %d",
             getItemTypeName(item -> type),
             item -> name,
             item -> value);
@@ -764,15 +799,4 @@ void freeGame(GameState* g){
     for (Room* r = g -> rooms; r ; r = r-> next){
         freeRoom(r);
     }
-    
-    free(g);
-}
-
-
-int hasPlayerWon(GameState* g){
-    for (Room* r = g -> rooms; r ; r = r-> next){
-        if((r -> monster) || !(r -> visited))
-            return FALSE;
-    }
-    return TRUE;
 }

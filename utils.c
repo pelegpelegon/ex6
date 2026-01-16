@@ -1,3 +1,9 @@
+/*
+Name: Peleg Sacher
+ID: 333135440
+Assignment: ex6
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,7 +14,7 @@
 
 int getInt(const char* prompt){
     int success = 0, input;
-    printf("%S", prompt);
+    printf("%s", prompt);
 
     success = scanf(" %d", &input);
     while (!success){
