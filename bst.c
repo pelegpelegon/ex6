@@ -148,7 +148,7 @@ void bstFree(BSTNode* root, void (*freeData)(void*)){
 }
 
 
-static int isEmpty(BSTNode* root){
+int isEmpty(BSTNode* root){
     if (root == NULL)
         return TRUE;
 

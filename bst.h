@@ -21,5 +21,5 @@ void bstInorder(BSTNode* root, void (*print)(void*));
 void bstPreorder(BSTNode* root, void (*print)(void*));
 void bstPostorder(BSTNode* root, void (*print)(void*));
 void bstFree(BSTNode* root, void (*freeData)(void*));
-
+int isEmpty(BSTNode* root);
 #endif
