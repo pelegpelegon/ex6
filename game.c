@@ -128,6 +128,7 @@ static void LegendRecursion(Room* r){
 
 
 static Room* findRoom(Room* room, int ID){
+    /* finds the room by id */
     if (room -> id == ID)
         return room;
 
@@ -136,6 +137,7 @@ static Room* findRoom(Room* room, int ID){
 
 
 static Room* findRoomByCords(Room* room, int x, int y){
+    /* finds the room by cordinates */
     if (room == NULL)
         return NULL;
 
@@ -157,6 +159,7 @@ static void freeRoom(Room *room){
 
 
 static Item* addItem(){
+    /* creating a new item and returning it */
     Item *newItem;
     newItem = malloc(sizeof(Item));
     
@@ -171,6 +174,7 @@ static Item* addItem(){
 
 
 static Monster* addMonster(){
+    /* creating a new monster and returning it */
     Monster *newMonster;
     newMonster = malloc(sizeof(Monster));
 
@@ -185,6 +189,7 @@ static Monster* addMonster(){
 
 
 static int getNewRoomID(GameState *g){
+    /* get the id a new room will have */
     int newID = 0;
     for (Room* r = g->rooms; r; r = r->next)
         newID = (newID < r -> id)? (r-> id):(newID);
@@ -194,6 +199,7 @@ static int getNewRoomID(GameState *g){
 
 
 static void linkNewRoom(GameState* g, Room* newRoom){
+    /* linking the new room in the linked list */
     Room* r = g->rooms;
 
     if (r == NULL)
@@ -225,6 +231,7 @@ static void playRoom(GameState* g, Room* room){
     /* all the printing stuff*/
     printRoom(g, room);
 
+    /* proforming the action */
     choice = getInt("1.Move 2.Fight 3.Pickup 4.Bag 5.Defeated 6.Quit\n");
     switch (choice){
     case MOVE:
@@ -263,6 +270,7 @@ static void playRoom(GameState* g, Room* room){
 
 
 static void printRoom(GameState* g, Room* room){
+    /* prints room the player is currently in */
     Monster* monster;
     Item* item;
     Player* player = g -> player;
@@ -325,6 +333,7 @@ static void moveAction(GameState* g, Room* room){
         default: break;
     }
 
+    /* checks if there is a room there */
     moveToRoom = findRoomByCords(g -> rooms ,newX, newY);
     if(!moveToRoom){
         printf("No room there\n");
@@ -474,6 +483,7 @@ static void quitAction(GameState* g){
 
 
 static int hasPlayerWon(GameState* g){
+    /* checks if the player has won */
     if(!(g -> player -> hp))
         return FALSE;
 
@@ -741,21 +751,25 @@ void freeItem(void *data){
 
 void playGame(GameState* g){
     Player* player = g -> player;
+    /* incase there isnt a player */
     if(player == NULL){
         printf("Init player first\n");
         return;
     }
 
+    /*will go through rooms until the player wins, dies or quits*/
     while (!(g -> configMaxHp == QUITING_INDICATOR) || ((!hasPlayerWon(g)) && (player -> hp))){
         playRoom(g, player -> currentRoom);
     }
 
+    /* handles the quiting */
     if(g -> configMaxHp == QUITING_INDICATOR){
         g -> configMaxHp = g -> player -> maxHp;
         return;
     }
 
     if(hasPlayerWon(g)){
+        /* player has won */
         printf("***************************************\n");
         printf("             VICTORY!                  \nAll rooms explored. All monsters defeated.\n");
         printf("***************************************\n");
@@ -763,6 +777,7 @@ void playGame(GameState* g){
         exit(0);
     }
     else{
+        /* player has lost */
         printf("--- YOU DIED ---\n");
         exit(0);
     }
